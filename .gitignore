@@ -3,3 +3,8 @@
 ################################################################################
 
 /x64
+/TestKB.VC.db
+*.opendb
+/ipch
+/.vs/AccidentalKeyPressFix/v14
+/TestKB/x64
