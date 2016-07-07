@@ -8,3 +8,5 @@
 /ipch
 /.vs/AccidentalKeyPressFix/v14
 /TestKB/x64
+/AccidentalKeyPressFix.VC.db
+/TestKB/TestKB.vcxproj.user
