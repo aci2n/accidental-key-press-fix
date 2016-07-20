@@ -7,11 +7,11 @@
 LRESULT CALLBACK KeyboardHook(int, WPARAM, LPARAM);
 void CALLBACK OsuMonitor();
 
-struct KeyState
+typedef struct KeyState
 {
 	WPARAM lastIdentifier;
 	DWORD lastDownTime;
-};
+} *PKeyState;
 
 const DWORD MIN_INVERVAL = 100;
 
@@ -21,7 +21,7 @@ bool gIsOsuActive = false;
 
 int main()
 {
-	new std::thread(OsuMonitor);
+	std::thread monitor = std::thread(OsuMonitor);
 	gHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHook, NULL, NULL);
 
 	MSG msg;
@@ -39,11 +39,10 @@ int main()
 LRESULT CALLBACK KeyboardHook(int nCode, WPARAM wParam, LPARAM lParam)
 {
 	bool skip = false;
-
 	if (!gIsOsuActive && nCode == HC_ACTION)
 	{
-		KBDLLHOOKSTRUCT *kbEvent = (KBDLLHOOKSTRUCT*)lParam;
-		KeyState *keyState = nullptr;
+		PKBDLLHOOKSTRUCT kbEvent = (PKBDLLHOOKSTRUCT)lParam;
+		PKeyState keyState = nullptr;
 		auto iterator = gKeyStateMap.find(kbEvent->vkCode);
 
 		if (iterator == gKeyStateMap.end())
@@ -56,7 +55,7 @@ LRESULT CALLBACK KeyboardHook(int nCode, WPARAM wParam, LPARAM lParam)
 			if (wParam == WM_KEYDOWN && keyState->lastIdentifier == WM_KEYUP && kbEvent->time - keyState->lastDownTime < MIN_INVERVAL)
 			{
 				skip = true;
-				std::cout << "skipping for: " << kbEvent->vkCode << ", at: " << kbEvent->time << std::endl;
+				std::cout << "skipping for: " << (char)kbEvent->vkCode << ", at: " << kbEvent->time << std::endl;
 			}
 		}
 
@@ -84,11 +83,13 @@ void CALLBACK OsuMonitor()
 
 		if (processesSnapshot != INVALID_HANDLE_VALUE)
 		{
-			Process32First(processesSnapshot, &processInfo);
-			do
+			if (Process32First(processesSnapshot, &processInfo))
 			{
-				foundOsuExe = (osuExe.compare(processInfo.szExeFile) == 0);
-			} while (!foundOsuExe && Process32Next(processesSnapshot, &processInfo));
+				do
+				{
+					foundOsuExe = (osuExe.compare(processInfo.szExeFile) == 0);
+				} while (!foundOsuExe && Process32Next(processesSnapshot, &processInfo));
+			}
 
 			CloseHandle(processesSnapshot);
 		}
@@ -96,9 +97,9 @@ void CALLBACK OsuMonitor()
 		if (foundOsuExe != gIsOsuActive)
 		{
 			std::cout << "osu!.exe info: " << (foundOsuExe ? "opened" : "closed") << std::endl;
+			gIsOsuActive = foundOsuExe;
 		}
 
-		gIsOsuActive = foundOsuExe;
 		Sleep(2500);
 	}
 }
